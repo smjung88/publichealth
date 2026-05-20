@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CCVI Gyeongsang EMD Boundary Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --navy: #102033;
+      --blue: #1f6feb;
+      --sky: #eaf3ff;
+      --green: #4caf7d;
+      --yellow: #f6d365;
+      --orange: #f7a531;
+      --red: #d83b3b;
+      --purple: #7c3aed;
+      --gray-50: #f7f9fb;
+      --gray-100: #edf1f5;
+      --gray-300: #cfd8e3;
+      --gray-500: #687586;
+      --gray-700: #334155;
+      --white: #ffffff;
+      --shadow: 0 18px 45px rgba(16, 32, 51, 0.12);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Noto Sans KR', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--navy);
+      background: var(--gray-50);
+    }
+
+    a { color: inherit; text-decoration: none; }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 34px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--gray-100);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--blue), #63d4b7);
+      box-shadow: 0 10px 25px rgba(31, 111, 235, 0.25);
+    }
+
+    .nav {
+      display: flex;
+      gap: 22px;
+      font-size: 14px;
+      color: var(--gray-700);
+    }
+
+    .nav a {
+      padding: 8px 10px;
+      border-radius: 999px;
+    }
+
+    .nav a.active, .nav a:hover {
+      color: var(--blue);
+      background: var(--sky);
+    }
+
+    .hero {
+      min-height: 560px;
+      display: grid;
+      grid-template-columns: 0.95fr 1.05fr;
+      gap: 32px;
+      padding: 54px 56px 36px;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(31,111,235,0.13), transparent 30%),
+        radial-gradient(circle at 72% 18%, rgba(76,175,125,0.18), transparent 26%),
+        linear-gradient(180deg, #ffffff 0%, var(--gray-50) 100%);
+    }
+
+    .hero-copy {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      max-width: 680px;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      padding: 8px 13px;
+      border-radius: 999px;
+      background: #dff7ed;
+      color: #167a55;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(38px, 5vw, 66px);
+      line-height: 1.05;
+      letter-spacing: -0.06em;
+    }
+
+    .hero-copy p {
+      margin: 22px 0 0;
+      color: var(--gray-700);
+      font-size: 18px;
+      line-height: 1.75;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 22px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .button:hover { transform: translateY(-2px); }
+
+    .button.primary {
+      color: white;
+      background: var(--blue);
+      box-shadow: 0 14px 30px rgba(31,111,235,0.26);
+    }
+
+    .button.secondary {
+      background: white;
+      color: var(--navy);
+      border: 1px solid var(--gray-300);
+    }
+
+    .map-shell {
+      position: relative;
+      height: 470px;
+      border-radius: 32px;
+      overflow: hidden;
+      background: white;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(207, 216, 227, 0.8);
+      align-self: center;
+    }
+
+    #map, #largeMap {
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-overlay {
+      position: absolute;
+      left: 18px;
+      top: 18px;
+      z-index: 500;
+      width: 270px;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.94);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 28px rgba(16,32,51,0.12);
+    }
+
+    .map-overlay h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    select, input {
+      width: 100%;
+      border: 1px solid var(--gray-300);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: white;
+      font-family: inherit;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+
+    .legend {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 500;
+      padding: 14px 16px;
+      width: 220px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 12px 28px rgba(16,32,51,0.12);
+    }
+
+    .legend-title {
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 9px;
+    }
+
+    .legend-gradient {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4caf7d, #f6d365, #f7a531, #d83b3b);
+      margin-bottom: 8px;
+    }
+
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--gray-500);
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 0 56px 34px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: 0 10px 24px rgba(16,32,51,0.06);
+    }
+
+    .stat-card .num {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 4px;
+    }
+
+    .stat-card .label {
+      font-size: 14px;
+      color: var(--gray-500);
+      line-height: 1.45;
+    }
+
+    section {
+      padding: 70px 56px;
+    }
+
+    .section-head {
+      max-width: 860px;
+      margin-bottom: 30px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(30px, 3vw, 44px);
+      letter-spacing: -0.05em;
+    }
+
+    .section-head p {
+      margin: 14px 0 0;
+      color: var(--gray-700);
+      font-size: 17px;
+      line-height: 1.7;
+    }
+
+    .measure-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .measure-card {
+      background: white;
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius);
+      padding: 24px;
+      min-height: 210px;
+      box-shadow: 0 10px 24px rgba(16,32,51,0.06);
+    }
+
+    .measure-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--sky);
+      color: var(--blue);
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    .measure-card h3 {
+      margin: 0 0 10px;
+      font-size: 19px;
+      letter-spacing: -0.03em;
+    }
+
+    .measure-card p {
+      margin: 0;
+      color: var(--gray-700);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .map-section {
+      background: var(--navy);
+      color: white;
+    }
+
+    .map-section .section-head p {
+      color: rgba(255,255,255,0.72);
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 20px;
+      min-height: 640px;
+    }
+
+    .panel {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 26px;
+      padding: 22px;
+      backdrop-filter: blur(8px);
+    }
+
+    .panel h3 {
+      margin: 0 0 16px;
+      font-size: 18px;
+    }
+
+    .filter-block {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .filter-block label {
+      font-size: 13px;
+      color: rgba(255,255,255,0.74);
+      font-weight: 700;
+    }
+
+    .layer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      font-size: 14px;
+    }
+
+    .toggle {
+      width: 38px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.26);
+      position: relative;
+    }
+
+    .toggle.on { background: #63d4b7; }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: white;
+      transition: 0.2s;
+    }
+
+    .toggle.on::after { left: 20px; }
+
+    .big-map {
+      border-radius: 26px;
+      overflow: hidden;
+      min-height: 640px;
+      background: #dbeafe;
+      position: relative;
+    }
+
+    #largeMap { height: 640px; }
+
+    .detail-box {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      z-index: 500;
+      width: 318px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.96);
+      color: var(--navy);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .detail-box h4 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .detail-box .score {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--red);
+      letter-spacing: -0.05em;
+    }
+
+    .mini-bars {
+      margin-top: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 92px 1fr 34px;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--gray-700);
+    }
+
+    .bar-bg {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--gray-100);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--blue);
+    }
+
+    .method-flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+
+    .step {
+      background: white;
+      border: 1px solid var(--gray-100);
+      border-radius: var(--radius);
+      padding: 24px;
+      min-height: 190px;
+      box-shadow: 0 10px 24px rgba(16,32,51,0.06);
+    }
+
+    .step-num {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--navy);
+      color: white;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+
+    .step h3 {
+      margin: 0 0 9px;
+      font-size: 17px;
+    }
+
+    .step p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--gray-700);
+    }
+
+    .policy {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+    }
+
+    .policy-card {
+      border-radius: 28px;
+      background: white;
+      border: 1px solid var(--gray-100);
+      padding: 30px;
+      box-shadow: 0 10px 24px rgba(16,32,51,0.06);
+    }
+
+    .policy-card h3 {
+      margin: 0 0 12px;
+      font-size: 22px;
+      letter-spacing: -0.03em;
+    }
+
+    .policy-card ul {
+      margin: 16px 0 0;
+      padding-left: 20px;
+      color: var(--gray-700);
+      line-height: 1.85;
+    }
+
+    footer {
+      padding: 30px 56px;
+      background: var(--navy);
+      color: rgba(255,255,255,0.72);
+      font-size: 14px;
+    }
+
+    .leaflet-control-attribution { font-size: 10px; }
+
+    @media (max-width: 1080px) {
+      .hero, .dashboard, .policy { grid-template-columns: 1fr; }
+      .stat-grid, .measure-grid, .method-flow { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 720px) {
+      .topbar { padding: 0 18px; }
+      .nav { display: none; }
+      .hero, section, .stat-grid, footer { padding-left: 20px; padding-right: 20px; }
+      .stat-grid, .measure-grid, .method-flow { grid-template-columns: 1fr; }
+      .map-shell { height: 420px; }
+      .map-overlay, .legend, .detail-box { position: static; width: auto; margin: 12px; }
+      .big-map { display: flex; flex-direction: column; }
+      #largeMap { height: 480px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="#home" class="brand">
+      <span class="brand-mark"></span>
+      <span>CCVI EMD Map</span>
+    </a>
+    <nav class="nav">
+      <a href="#home" class="active">Home</a>
+      <a href="#measures">Measures</a>
+      <a href="#map-view">Interactive Map</a>
+      <a href="#methods">Methods</a>
+      <a href="#policy">Policy Use</a>
+    </nav>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="eyebrow">Eup · Myeon · Dong Boundary-Based Care Equity Map</div>
+        <h1>경상권 읍·면·동 돌봄 취약성 지도</h1>
+        <p>
+          500m 격자 대신 실제 읍·면·동 행정경계를 기반으로 지역사회 돌봄 취약성 지수(CCVI)를 시각화합니다.
+          정책 담당자와 민간재단이 행정구역 단위로 취약지역을 직관적으로 확인하고, 자원 개입 우선순위를 설정할 수 있도록 설계한 연구용 웹지도입니다.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#map-view">읍·면·동 지도 보기</a>
+          <a class="button secondary" href="#measures">지표 체계 보기</a>
+        </div>
+      </div>
+      <div class="map-shell">
+        <div id="map"></div>
+        <div class="map-overlay">
+          <h3>Measure Selection</h3>
+          <select id="measureSelect">
+            <option value="ccvi">CCVI 종합지수</option>
+            <option value="demand">돌봄 수요</option>
+            <option value="accessGap">인프라 접근성 결핍</option>
+            <option value="environment">물리적 환경 취약성</option>
+          </select>
+        </div>
+        <div class="legend">
+          <div class="legend-title">읍·면·동 CCVI Score</div>
+          <div class="legend-gradient"></div>
+          <div class="legend-labels"><span>낮음</span><span>중간</span><span>높음</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="num">EMD</div>
+        <div class="label">읍·면·동 행정경계 기반 표현</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">5</div>
+        <div class="label">부산·대구·울산·경북·경남 권역</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">2SFCA</div>
+        <div class="label">도로망 기반 돌봄 접근성 분석 결과 반영</div>
+      </div>
+      <div class="stat-card">
+        <div class="num">PPP</div>
+        <div class="label">민관협력 자원 표적화 전략</div>
+      </div>
+    </div>
+
+    <section id="measures">
+      <div class="section-head">
+        <h2>Measures</h2>
+        <p>
+          CCVI는 읍·면·동별 돌봄 수요, 사회구조적 결핍, 건강위험, 물리적 환경, 보건복지 인프라 접근성을 통합하여
+          행정구역 단위의 돌봄 취약성을 계량화합니다.
+        </p>
+      </div>
+      <div class="measure-grid">
+        <article class="measure-card">
+          <div class="measure-icon">01</div>
+          <h3>돌봄 수요</h3>
+          <p>65세 이상 독거노인 비율, 1인 가구율, 장기요양 필요도, 고령인구 밀도 등을 읍·면·동 단위로 집계합니다.</p>
+        </article>
+        <article class="measure-card">
+          <div class="measure-icon">02</div>
+          <h3>사회구조적 결핍</h3>
+          <p>기초생활수급자 비율, 지역박탈지수, 주거 불안정성 등 돌봄 결핍의 사회적 기반을 반영합니다.</p>
+        </article>
+        <article class="measure-card">
+          <div class="measure-icon">03</div>
+          <h3>건강위험</h3>
+          <p>주관적 건강수준, 흡연율, 만성질환 관련 지표 등을 활용하여 지역별 건강 취약성을 반영합니다.</p>
+        </article>
+        <article class="measure-card">
+          <div class="measure-icon">04</div>
+          <h3>물리적 환경</h3>
+          <p>노후주택 비율, 급경사지, 산간·외곽 지역성 등 이동과 돌봄 접근을 어렵게 하는 요인을 포함합니다.</p>
+        </article>
+        <article class="measure-card">
+          <div class="measure-icon">05</div>
+          <h3>인프라 공급</h3>
+          <p>보건소, 치매안심센터, 노인장기요양기관, 공공 돌봄기관의 위치와 공급량을 반영합니다.</p>
+        </article>
+        <article class="measure-card">
+          <div class="measure-icon">06</div>
+          <h3>공간 접근성</h3>
+          <p>실제 도로망과 차량 이동시간 기반 2SFCA 접근성 점수를 읍·면·동별로 요약하여 표시합니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="map-view" class="map-section">
+      <div class="section-head">
+        <h2>Interactive EMD Boundary Map</h2>
+        <p>
+          아래 지도는 실제 읍·면·동 경계 파일이 들어가기 전의 가상 시안입니다. 실제 배포 시에는 SGIS 또는 행정구역 경계 SHP를 GeoJSON으로 변환한
+          <strong>emd_boundary.geojson</strong>에 읍·면·동별 CCVI 결과를 결합하여 사용합니다.
+        </p>
+      </div>
+      <div class="dashboard">
+        <aside class="panel">
+          <h3>Filters</h3>
+          <div class="filter-block">
+            <label for="regionSelect">권역 선택</label>
+            <select id="regionSelect">
+              <option value="all">전체 경상권</option>
+              <option value="경북">경북</option>
+              <option value="경남">경남</option>
+              <option value="부산">부산</option>
+              <option value="대구">대구</option>
+              <option value="울산">울산</option>
+            </select>
+            <label for="riskSelect">취약도 구간</label>
+            <select id="riskSelect">
+              <option value="all">전체</option>
+              <option value="high">고위험</option>
+              <option value="mid">중위험</option>
+              <option value="low">저위험</option>
+            </select>
+          </div>
+
+          <h3>Map Layers</h3>
+          <div class="layer-item"><span>읍·면·동 CCVI</span><span class="toggle on"></span></div>
+          <div class="layer-item"><span>LISA 핫스팟</span><span class="toggle on"></span></div>
+          <div class="layer-item"><span>보건복지 인프라</span><span class="toggle on"></span></div>
+          <div class="layer-item"><span>시·군·구 경계</span><span class="toggle"></span></div>
+          <br />
+          <h3>Priority Types</h3>
+          <div class="layer-item"><span>고수요·저접근 읍면동</span><strong>High</strong></div>
+          <div class="layer-item"><span>산간·교통취약 읍면동</span><strong>High</strong></div>
+          <div class="layer-item"><span>도시 내 은폐취약 동</span><strong>Mid</strong></div>
+        </aside>
+        <div class="big-map">
+          <div id="largeMap"></div>
+          <div class="detail-box" id="detailBox">
+            <h4>Selected Area</h4>
+            <div style="font-size:15px;font-weight:800;margin-bottom:4px;" id="selectedName">경북 의성군 안계면</div>
+            <div class="score" id="selectedScore">87.4</div>
+            <div style="font-size:13px;color:#687586;font-weight:700;" id="selectedType">High Vulnerability · 고수요·저접근</div>
+            <div class="mini-bars">
+              <div class="bar-row"><span>돌봄 수요</span><div class="bar-bg"><div class="bar-fill" id="barDemand" style="width:88%"></div></div><b id="numDemand">88</b></div>
+              <div class="bar-row"><span>접근성 결핍</span><div class="bar-bg"><div class="bar-fill" id="barAccess" style="width:79%"></div></div><b id="numAccess">79</b></div>
+              <div class="bar-row"><span>건강위험</span><div class="bar-bg"><div class="bar-fill" id="barHealth" style="width:72%"></div></div><b id="numHealth">72</b></div>
+              <div class="bar-row"><span>물리환경</span><div class="bar-bg"><div class="bar-fill" id="barEnv" style="width:64%"></div></div><b id="numEnv">64</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="methods">
+      <div class="section-head">
+        <h2>Methods</h2>
+        <p>
+          이 버전은 읍·면·동 경계를 최종 시각화 단위로 사용합니다. 분석 결과를 행정구역별로 요약하여 정책 활용성과 해석 가능성을 높이는 구조입니다.
+        </p>
+      </div>
+      <div class="method-flow">
+        <article class="step">
+          <div class="step-num">1</div>
+          <h3>Boundary Data</h3>
+          <p>SGIS 또는 행정구역 경계 SHP에서 읍·면·동 경계를 확보하고 GeoJSON으로 변환합니다.</p>
+        </article>
+        <article class="step">
+          <div class="step-num">2</div>
+          <h3>Data Aggregation</h3>
+          <p>인구, 건강, 장기요양, 주거, 인프라 자료를 읍·면·동 코드 기준으로 결합합니다.</p>
+        </article>
+        <article class="step">
+          <div class="step-num">3</div>
+          <h3>2SFCA Summary</h3>
+          <p>도로망 기반 접근성 점수를 산출한 뒤 읍·면·동별 평균 또는 인구가중 평균으로 요약합니다.</p>
+        </article>
+        <article class="step">
+          <div class="step-num">4</div>
+          <h3>CCVI Scoring</h3>
+          <p>Z-score 표준화, PCA, 다층모형 등을 활용하여 읍·면·동별 종합 취약성 지수를 산출합니다.</p>
+        </article>
+        <article class="step">
+          <div class="step-num">5</div>
+          <h3>Hotspot Typology</h3>
+          <p>Local Moran’s I와 군집분석으로 고위험 읍·면·동 유형을 분류하고 개입 우선순위를 도출합니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="policy">
+      <div class="section-head">
+        <h2>Policy Use</h2>
+        <p>
+          읍·면·동 단위 지도는 지자체 행정체계와 직접 연결되기 때문에 예산 배분, 사업 대상지 선정, 민관협력 자원 배치에 활용하기 쉽습니다.
+        </p>
+      </div>
+      <div class="policy">
+        <article class="policy-card">
+          <h3>Public Sector</h3>
+          <ul>
+            <li>읍·면·동별 돌봄 취약성 순위 산출</li>
+            <li>고위험 읍면동 대상 방문간호·이동형 돌봄서비스 배치</li>
+            <li>보건소, 치매안심센터, 장기요양기관 접근성 개선 계획 수립</li>
+            <li>지역사회보장계획과 공공보건의료계획의 근거자료로 활용</li>
+          </ul>
+        </article>
+        <article class="policy-card">
+          <h3>Private & Nonprofit Sector</h3>
+          <ul>
+            <li>민간재단 후원사업의 읍면동 단위 표적화</li>
+            <li>기업 사회공헌 프로그램의 우선 개입 지역 선정</li>
+            <li>지역 복지기관, 병원, 자원봉사조직 간 협력 네트워크 구축</li>
+            <li>데이터 기반 PPP 성과 모니터링 지표로 활용</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    © 2026 CCVI Gyeongsang Research Team. EMD boundary-based prototype for research planning and public communication.
+  </footer>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const gyeongsangCenter = [35.85, 128.75];
+    let currentMeasure = 'ccvi';
+    let currentRegion = 'all';
+    let currentRisk = 'all';
+
+    function scoreColor(score) {
+      if (score >= 80) return '#d83b3b';
+      if (score >= 65) return '#f7a531';
+      if (score >= 45) return '#f6d365';
+      return '#4caf7d';
+    }
+
+    const emdData = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: { sido: '경북', sigungu: '의성군', emd: '안계면', ccvi: 87.4, demand: 88, accessGap: 79, health: 72, environment: 64, type: '고수요·저접근' }, geometry: { type: 'Polygon', coordinates: [[[128.35,36.42],[128.56,36.42],[128.60,36.30],[128.50,36.20],[128.32,36.24],[128.28,36.35],[128.35,36.42]]] } },
+        { type: 'Feature', properties: { sido: '경북', sigungu: '영양군', emd: '입암면', ccvi: 82.1, demand: 77, accessGap: 91, health: 69, environment: 86, type: '산간·교통취약' }, geometry: { type: 'Polygon', coordinates: [[[128.78,36.70],[129.02,36.66],[129.08,36.52],[128.96,36.42],[128.74,36.46],[128.68,36.60],[128.78,36.70]]] } },
+        { type: 'Feature', properties: { sido: '경북', sigungu: '청도군', emd: '풍각면', ccvi: 69.3, demand: 71, accessGap: 66, health: 61, environment: 74, type: '중위험 농촌형' }, geometry: { type: 'Polygon', coordinates: [[[128.47,35.76],[128.69,35.72],[128.74,35.58],[128.58,35.47],[128.40,35.52],[128.36,35.66],[128.47,35.76]]] } },
+        { type: 'Feature', properties: { sido: '경남', sigungu: '함양군', emd: '마천면', ccvi: 84.8, demand: 83, accessGap: 88, health: 76, environment: 90, type: '산간·교통취약' }, geometry: { type: 'Polygon', coordinates: [[[127.58,35.48],[127.82,35.46],[127.91,35.31],[127.75,35.17],[127.52,35.22],[127.45,35.36],[127.58,35.48]]] } },
+        { type: 'Feature', properties: { sido: '경남', sigungu: '거창군', emd: '가북면', ccvi: 78.5, demand: 74, accessGap: 82, health: 68, environment: 83, type: '산간·교통취약' }, geometry: { type: 'Polygon', coordinates: [[[127.88,35.89],[128.10,35.86],[128.18,35.73],[128.02,35.62],[127.82,35.66],[127.76,35.80],[127.88,35.89]]] } },
+        { type: 'Feature', properties: { sido: '경남', sigungu: '통영시', emd: '욕지면', ccvi: 73.7, demand: 70, accessGap: 86, health: 58, environment: 76, type: '도서·접근취약' }, geometry: { type: 'Polygon', coordinates: [[[128.15,34.72],[128.35,34.70],[128.39,34.58],[128.24,34.49],[128.08,34.53],[128.03,34.64],[128.15,34.72]]] } },
+        { type: 'Feature', properties: { sido: '부산', sigungu: '영도구', emd: '동삼동', ccvi: 68.2, demand: 69, accessGap: 55, health: 74, environment: 61, type: '도시 내 은폐취약' }, geometry: { type: 'Polygon', coordinates: [[[129.05,35.10],[129.13,35.10],[129.16,35.05],[129.12,35.00],[129.04,35.01],[129.01,35.06],[129.05,35.10]]] } },
+        { type: 'Feature', properties: { sido: '부산', sigungu: '사하구', emd: '감천동', ccvi: 63.4, demand: 66, accessGap: 48, health: 71, environment: 58, type: '도시 내 은폐취약' }, geometry: { type: 'Polygon', coordinates: [[[128.98,35.12],[129.06,35.12],[129.08,35.06],[129.03,35.02],[128.96,35.04],[128.94,35.09],[128.98,35.12]]] } },
+        { type: 'Feature', properties: { sido: '대구', sigungu: '남구', emd: '대명동', ccvi: 57.8, demand: 62, accessGap: 42, health: 65, environment: 49, type: '도시 일반취약' }, geometry: { type: 'Polygon', coordinates: [[[128.55,35.86],[128.62,35.86],[128.64,35.81],[128.59,35.77],[128.52,35.79],[128.50,35.84],[128.55,35.86]]] } },
+        { type: 'Feature', properties: { sido: '울산', sigungu: '울주군', emd: '상북면', ccvi: 71.5, demand: 68, accessGap: 77, health: 60, environment: 79, type: '산간·교통취약' }, geometry: { type: 'Polygon', coordinates: [[[129.02,35.66],[129.26,35.64],[129.30,35.48],[129.15,35.37],[128.95,35.42],[128.90,35.57],[129.02,35.66]]] } },
+        { type: 'Feature', properties: { sido: '울산', sigungu: '동구', emd: '방어동', ccvi: 49.6, demand: 52, accessGap: 38, health: 55, environment: 45, type: '상대적 안정' }, geometry: { type: 'Polygon', coordinates: [[[129.38,35.51],[129.46,35.50],[129.48,35.44],[129.42,35.40],[129.35,35.42],[129.34,35.47],[129.38,35.51]]] } },
+        { type: 'Feature', properties: { sido: '경북', sigungu: '포항시 북구', emd: '죽장면', ccvi: 80.2, demand: 78, accessGap: 84, health: 66, environment: 89, type: '산간·교통취약' }, geometry: { type: 'Polygon', coordinates: [[[129.05,36.30],[129.28,36.27],[129.36,36.12],[129.22,36.01],[128.98,36.05],[128.92,36.20],[129.05,36.30]]] } }
+      ]
+    };
+
+    const facilityData = [
+      { name: '치매안심센터 A', type: 'Dementia Center', coord: [35.87, 128.61] },
+      { name: '공공보건소 B', type: 'Public Health Center', coord: [35.75, 128.72] },
+      { name: '장기요양기관 C', type: 'Long-term Care', coord: [36.05, 128.42] },
+      { name: '돌봄지원센터 D', type: 'Community Care', coord: [35.58, 129.05] },
+      { name: '공공보건소 E', type: 'Public Health Center', coord: [36.22, 128.88] }
+    ];
+
+    function getRisk(score) {
+      if (score >= 75) return 'high';
+      if (score >= 55) return 'mid';
+      return 'low';
+    }
+
+    function isVisible(feature) {
+      const p = feature.properties;
+      const regionOk = currentRegion === 'all' || p.sido === currentRegion;
+      const riskOk = currentRisk === 'all' || getRisk(p.ccvi) === currentRisk;
+      return regionOk && riskOk;
+    }
+
+    function styleFeature(feature, measure = currentMeasure) {
+      const p = feature.properties;
+      const value = p[measure] || p.ccvi;
+      return {
+        color: '#ffffff',
+        weight: 1.8,
+        opacity: isVisible(feature) ? 0.92 : 0.15,
+        fillColor: scoreColor(value),
+        fillOpacity: isVisible(feature) ? 0.72 : 0.05,
+        dashArray: isVisible(feature) ? null : '4 4'
+      };
+    }
+
+    function updateDetail(p) {
+      document.getElementById('selectedName').textContent = `${p.sido} ${p.sigungu} ${p.emd}`;
+      document.getElementById('selectedScore').textContent = p.ccvi.toFixed(1);
+      document.getElementById('selectedType').textContent = `${getRisk(p.ccvi) === 'high' ? 'High' : getRisk(p.ccvi) === 'mid' ? 'Medium' : 'Low'} Vulnerability · ${p.type}`;
+      document.getElementById('barDemand').style.width = `${p.demand}%`;
+      document.getElementById('barAccess').style.width = `${p.accessGap}%`;
+      document.getElementById('barHealth').style.width = `${p.health}%`;
+      document.getElementById('barEnv').style.width = `${p.environment}%`;
+      document.getElementById('numDemand').textContent = Math.round(p.demand);
+      document.getElementById('numAccess').textContent = Math.round(p.accessGap);
+      document.getElementById('numHealth').textContent = Math.round(p.health);
+      document.getElementById('numEnv').textContent = Math.round(p.environment);
+    }
+
+    function bindPopup(feature, layer) {
+      const p = feature.properties;
+      layer.bindPopup(`
+        <strong>${p.sido} ${p.sigungu} ${p.emd}</strong><br>
+        CCVI: <b>${p.ccvi}</b><br>
+        유형: ${p.type}<br>
+        돌봄 수요: ${p.demand}<br>
+        접근성 결핍: ${p.accessGap}<br>
+        물리환경: ${p.environment}
+      `);
+      layer.on('click', () => updateDetail(p));
+      layer.on('mouseover', () => layer.setStyle({ weight: 3, color: '#102033' }));
+      layer.on('mouseout', () => layer.setStyle(styleFeature(feature)));
+    }
+
+    function initMap(target, zoom, interactive = true) {
+      const map = L.map(target, {
+        zoomControl: interactive,
+        scrollWheelZoom: interactive,
+        dragging: interactive,
+        doubleClickZoom: interactive
+      }).setView(gyeongsangCenter, zoom);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const emdLayer = L.geoJSON(emdData, {
+        style: feature => styleFeature(feature),
+        onEachFeature: bindPopup
+      }).addTo(map);
+
+      facilityData.forEach(f => {
+        L.circleMarker(f.coord, {
+          radius: 7,
+          color: '#102033',
+          weight: 2,
+          fillColor: '#ffffff',
+          fillOpacity: 1
+        }).addTo(map).bindPopup(`<strong>${f.name}</strong><br>${f.type}`);
+      });
+
+      return { map, emdLayer };
+    }
+
+    const small = initMap('map', 8, false);
+    const large = initMap('largeMap', 8, true);
+
+    function refreshLayers() {
+      small.emdLayer.setStyle(feature => styleFeature(feature));
+      large.emdLayer.setStyle(feature => styleFeature(feature));
+    }
+
+    document.getElementById('measureSelect').addEventListener('change', function(e) {
+      currentMeasure = e.target.value;
+      refreshLayers();
+    });
+
+    document.getElementById('regionSelect').addEventListener('change', function(e) {
+      currentRegion = e.target.value;
+      refreshLayers();
+    });
+
+    document.getElementById('riskSelect').addEventListener('change', function(e) {
+      currentRisk = e.target.value;
+      refreshLayers();
+    });
+  </script>
+</body>
+</html>
